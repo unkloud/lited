@@ -1,6 +1,3 @@
-# Prerequisites
-*.d
-
 # Object files
 *.o
 *.ko
@@ -43,10 +40,27 @@
 *.pdb
 
 # Kernel Module Compile Results
-*.mod*
-*.cmd
+__dummy.html
+.dub
 .tmp_versions/
-modules.order
-Module.symvers
-Mkfile.old
+*.a
+*.cmd
+*.dll
+*.dylib
+*.exe
+*.lib
+*.lst
+*.mod*
+*.o
+*.obj
+*.pdb
+*.so
+*.sqlite
 dkms.conf
+docs.json
+docs/
+libs/sqlite/
+lited
+Mkfile.old
+Module.symvers
+modules.order

@@ -1,0 +1,20 @@
+{
+	"authors": [
+		"unkloudd"
+	],
+	"copyright": "Copyright © 2025, unkloud",
+	"description": "A SQLite app in Dlang",
+	"license": "AGPL-3.0-or-later",
+	"name": "lited",
+	"importPaths": [
+		"libs/sqlite",
+		"source"
+	],
+	"dflags": [
+		"-Llibs/sqlite/sqlite3.a"
+	],
+	"preBuildCommands": [
+		"liteup.sh 3.5.1 libs/sqlite",
+		"make"
+	]
+}
