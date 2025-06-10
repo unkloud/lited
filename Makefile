@@ -39,7 +39,7 @@ $(SQLITE_WRAPPER):
 clean:
 	@echo "Cleaning build artifacts..."
 	@rm -f $(SQLITE_OBJ) $(SQLITE_LIB) $(SQLITE_WRAPPER) $(LITED)
-	@rm -rf $(SQLITE_DIR)
+	@rm -rf $(SQLITE_DIR) *.sqlite
 	@dub clean
 
 clean-all: clean
