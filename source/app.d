@@ -37,7 +37,6 @@ void testInMemDatabase()
 	sqlite3* db;
 	auto dbName = ":memory:";
 	auto ret = sqlite3_open(toStringz(dbName), &db);
-	assert(ret == SQLITE_OK);
 	scope (exit)
 	{
 		ret = sqlite3_close(db);
@@ -47,6 +46,8 @@ void testInMemDatabase()
 	{
 		writeln("Can't open database: " ~ to!string(sqlite3_errmsg(db)));
 	}
+	assert(ret == SQLITE_OK);
+	runTest(db);
 }
 
 void testDatabasePersisted()
@@ -64,6 +65,7 @@ void testDatabasePersisted()
 	{
 		writeln("Can't open database: " ~ to!string(sqlite3_errmsg(db)));
 	}
+	runTest(db);
 }
 
 void main()
