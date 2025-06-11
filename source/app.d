@@ -27,8 +27,16 @@ extern (C)
 void runTest(sqlite3* db)
 {
 	char* zErrMsg;
-	string ddl = "create table if not exists test_table (first_name varchar, lastname varchar);";
+	scope (failure)
+	{
+		writeln("SQL error: ", zErrMsg);
+		sqlite3_free(zErrMsg);
+	}
+	string ddl = "create table if not exists test_table (first_name varchar, lastname varchar)";
 	auto ret = sqlite3_exec(db, ddl.toStringz(), &callback, null, &zErrMsg);
+	assert(ret == SQLITE_OK);
+	string insertSql = "insert into test_table values ('xwang','seek')";
+	ret = sqlite3_exec(db, insertSql.toStringz(), &callback, null, &zErrMsg);
 	assert(ret == SQLITE_OK);
 }
 
