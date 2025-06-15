@@ -1,84 +1,47 @@
+import hnclient;
+import sqlite_wrapper;
 import std.stdio;
-import lited;
-import std.conv;
-import std.string;
+import std.getopt;
+import vibe.data.json;
 
-void printVersions()
+void create_tables(ref Database db, bool drop_first = false)
 {
-	writeln("SQLITE_VERSION=", SQLITE_VERSION);
-	writeln("sqlite3_libversion()=", to!string(sqlite3_libversion()));
+    if (drop_first)
+    {
+        db.execute("drop index if exists idx_hackernews_items_id;");
+        db.execute("drop table if exists hackernews_items;");
+    }
+    db.execute(`
+    CREATE TABLE if not exists hackernews_items (
+        id INTEGER PRIMARY KEY NOT NULL,
+        content JSON);
+    CREATE INDEX if not exists idx_hackernews_items_id ON hackernews_items(id);
+    `);
 }
 
-extern (C)
+void upsert_item(ref Database db, in ref HNItem item)
 {
-	// Directly copied from https://github.com/SelimOzel/dlang-sqlite-interface/blob/main/app.d
-	static int callback(void* NotUsed, int argc, char** argv, char** azColName)
-	{
-		int i;
-		for (i = 0; i < argc; i++)
-		{
-			printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
-		}
-		printf("\n");
-		return 0;
-	}
+    if (item.content != Json.emptyObject)
+    {
+        auto stmt = db.prepare(
+            "INSERT OR REPLACE INTO hackernews_items (id, content) VALUES (?, ?)");
+        stmt.bind(1, item.id);
+        stmt.bind(2, item.content);
+        stmt.execute();
+    }
 }
 
-void runTest(sqlite3* db)
+void main(string[] args)
 {
-	char* zErrMsg;
-	scope (failure)
-	{
-		writeln("SQL error: ", zErrMsg);
-		sqlite3_free(zErrMsg);
-	}
-	string ddl = "create table if not exists test_table (first_name varchar, lastname varchar)";
-	auto ret = sqlite3_exec(db, ddl.toStringz(), &callback, null, &zErrMsg);
-	assert(ret == SQLITE_OK);
-	string insertSql = "insert into test_table values ('xwang','seek')";
-	ret = sqlite3_exec(db, insertSql.toStringz(), &callback, null, &zErrMsg);
-	assert(ret == SQLITE_OK);
-}
-
-void testInMemDatabase()
-{
-	sqlite3* db;
-	auto dbName = ":memory:";
-	auto ret = sqlite3_open(toStringz(dbName), &db);
-	scope (exit)
-	{
-		ret = sqlite3_close(db);
-		assert(ret == SQLITE_OK);
-	}
-	scope (failure)
-	{
-		writeln("Can't open database: " ~ to!string(sqlite3_errmsg(db)));
-	}
-	assert(ret == SQLITE_OK);
-	runTest(db);
-}
-
-void testDatabasePersisted()
-{
-	sqlite3* db;
-	auto dbName = "test.sqlite";
-	auto ret = sqlite3_open(toStringz(dbName), &db);
-	assert(ret == SQLITE_OK);
-	scope (exit)
-	{
-		ret = sqlite3_close(db);
-		assert(ret == SQLITE_OK);
-	}
-	scope (failure)
-	{
-		writeln("Can't open database: " ~ to!string(sqlite3_errmsg(db)));
-	}
-	runTest(db);
-}
-
-void main()
-{
-	printVersions();
-	testInMemDatabase();
-	testDatabasePersisted();
+    string database = "hackernews.sqlite";
+    auto helpInformation = getopt(args, "database", &database);
+    if (helpInformation.helpWanted)
+    {
+        defaultGetoptPrinter("Some information about the program.", helpInformation.options);
+    }
+    auto db = Database(database);
+    db.create_tables(true);
+    auto itemId = latestItemId();
+    auto item = getItem(itemId);
+    db.upsert_item(item);
 }

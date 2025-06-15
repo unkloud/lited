@@ -9,20 +9,22 @@ SQLITE_SRC = $(SQLITE_DIR)/sqlite3.c
 SQLITE_OBJ = $(SQLITE_DIR)/sqlite3.o
 SQLITE_LIB = $(SQLITE_DIR)/sqlite3.a
 SQLITE_WRAPPER = $(SQLITE_DIR)/lited.c
+SQLITE_CLI_SRC = $(SQLITE_DIR)/shell.c
+SQLITE_CLI=$(SQLITE_DIR)/sqlite3
 LITED = ./lited
 
 # Default target
 all: prebuild
 
 # PreBuild commands equivalent
-prebuild: $(SQLITE_LIB) $(SQLITE_WRAPPER)
+prebuild: $(SQLITE_LIB) $(SQLITE_WRAPPER) $(SQLITE_CLI)
 	@echo "PreBuild commands completed successfully"
 
 # Compile SQLite3 object file
 $(SQLITE_OBJ): $(SQLITE_SRC)
 	@echo "Compiling SQLite3 object file..."
 	@mkdir -p $(SQLITE_DIR)
-	$(CC) -c $(SQLITE_SRC) -fPIC -o $(SQLITE_OBJ)
+	$(CC) -c $(SQLITE_SRC) -DSQLITE_DQS=0 -fPIC -o $(SQLITE_OBJ)
 
 # Create SQLite3 static library
 $(SQLITE_LIB): $(SQLITE_OBJ)
@@ -35,12 +37,17 @@ $(SQLITE_WRAPPER):
 	@mkdir -p $(SQLITE_DIR)
 	@echo '#include "sqlite3.h"' > $(SQLITE_WRAPPER)
 
+$(SQLITE_CLI): $(SQLITE_SRC) $(SQLITE_CLI_SRC)
+	@echo "Generating SQLite cli"
+	@mkdir -p $(SQLITE_DIR)
+	$(CC) -DSQLITE_THREADSAFE=0 $(SQLITE_CLI_SRC) $(SQLITE_SRC) -DSQLITE_DQS=0 -ldl -lm -o $(SQLITE_CLI)
+
 # Clean targets
 clean:
 	@echo "Cleaning build artifacts..."
-	@rm -f $(SQLITE_OBJ) $(SQLITE_LIB) $(SQLITE_WRAPPER) $(LITED)
-	@rm -rf $(SQLITE_DIR) *.sqlite
 	@dub clean
+	@rm -f $(SQLITE_OBJ) $(SQLITE_LIB) $(SQLITE_WRAPPER) $(LITED) $(SQLITE_CLI)
+	@rm -rf $(SQLITE_DIR) *.sqlite
 
 clean-all: clean
 	@echo "Cleaning all generated files..."

@@ -3,16 +3,20 @@
 		"unkloudd"
 	],
 	"copyright": "Copyright © 2025, unkloud",
+	"dependencies": {
+		"vibe-d:data": "~>0.10.2",
+		"vibe-d:http": "~>0.10.2"
+	},
 	"description": "A SQLite app in Dlang",
-	"license": "AGPL-3.0-or-later",
-	"name": "lited",
+	"dflags": [
+		"-Llibs/sqlite/sqlite3.a"
+	],
 	"importPaths": [
 		"libs/sqlite",
 		"source"
 	],
-	"dflags": [
-		"-Llibs/sqlite/sqlite3.a"
-	],
+	"license": "AGPL-3.0-or-later",
+	"name": "lited",
 	"preBuildCommands": [
 		"liteup.sh 3.5.1 libs/sqlite",
 		"make"

@@ -2,4 +2,6 @@
 
 Inspired by [Interfacing SQLite with DLang is very easy - why?](https://forum.dlang.org/thread/ecekccdprkxbbqsbnmcx@forum.dlang.org)
 
-Need [liteup](https://github.com/unkloud/liteup) to setup the sqlite source for the dub project
+## Dependencies
+* [liteup](https://github.com/unkloud/liteup) to setup the sqlite source for the dub project
+* [libssl-dev](https://github.com/openssl/openssl)

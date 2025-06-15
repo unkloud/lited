@@ -64,3 +64,4 @@ lited
 Mkfile.old
 Module.symvers
 modules.order
+*-test-library
