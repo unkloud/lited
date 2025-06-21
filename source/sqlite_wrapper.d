@@ -1,13 +1,14 @@
 module sqlite_wrapper;
 
 import lited;
+import std.array;
 import std.conv;
 import std.exception;
 import std.format;
-import std.string;
 import std.stdio;
+import std.string;
 import vibe.data.json;
-import std.array;
+import std.logger;
 
 class SQLiteException : Exception
 {
@@ -24,11 +25,41 @@ struct Database
 {
     private sqlite3* db;
     private bool isOpen;
+    private Logger logger;
+
+    private static extern (C) void sqliteLogCallback(void* pArg, int iErrCode, const(char)* zMsg) nothrow
+    {
+        Logger log = cast(Logger) pArg;
+        try
+        {
+            string message = to!string(zMsg);
+            if (iErrCode == 0)
+            {
+                log.info("SQLite: " ~ message);
+            }
+            else
+            {
+                log.warningf("SQLite Error [%d]: %s", iErrCode, message);
+            }
+        }
+        catch (Exception e)
+        {
+            // Silently ignore - cannot propagate exceptions from nothrow
+            // Optionally: store error somewhere for later inspection
+        }
+    }
+
+    this(string dbPath, Logger logger)
+    {
+        enforce(logger !is null);
+        open(dbPath);
+        apply_best_practises();
+    }
 
     this(string dbPath)
     {
-        open(dbPath);
-        apply_best_practises();
+        auto logger = new NullLogger();
+        this(dbPath, logger);
     }
 
     this() @disable;
@@ -42,11 +73,13 @@ struct Database
     {
         // keeps up to date with SQLite best practises -
         // https://rogerbinns.github.io/apsw/bestpractice.html
-        sqlite3_busy_timeout(this.db, busy_timeout_ms);
+        execute(i"PRAGMA busy_timeout = $(busy_timeout_ms);".text);
         execute("PRAGMA foreign_keys = ON;");
         execute("PRAGMA optimize;");
         execute("PRAGMA recursive_triggers = true;");
         execute("PRAGMA journal_mode=WAL;");
+        int retCode = sqlite3_config(SQLITE_CONFIG_LOG, &sqliteLogCallback, cast(void*) logger);
+        assert(retCode == SQLITE_OK);
     }
 
     void open(string dbPath)
@@ -317,7 +350,6 @@ struct Transaction
 }
 
 // Test cases
-// Condensed Unit Tests
 unittest
 {
     import std.stdio;
@@ -400,4 +432,93 @@ unittest
     db.execute("UPDATE json_test SET data = json_set(data, '$.value', 100) WHERE id = 1");
     auto updated = db.prepare("SELECT data FROM json_test WHERE id = 1").query().getJson(0);
     assert(updated["value"].get!int == 100);
+}
+
+class TestLogger : Logger
+{
+    string[] infoMessages;
+    string[] warningMessages;
+    string[] errorMessages;
+
+    this()
+    {
+        super(LogLevel.all);
+    }
+
+    override void writeLogMsg(ref LogEntry payload) @trusted
+    {
+        string msg = payload.msg;
+        final switch (payload.logLevel)
+        {
+        case LogLevel.info:
+            infoMessages ~= msg;
+            break;
+        case LogLevel.warning:
+            warningMessages ~= msg;
+            break;
+        case LogLevel.error:
+            errorMessages ~= msg;
+            break;
+        case LogLevel.trace:
+        case LogLevel.fatal:
+        case LogLevel.all:
+        case LogLevel.off:
+        case LogLevel.critical:
+            break;
+        }
+    }
+
+    bool hasInfoMessage(string needle)
+    {
+        import std.algorithm : canFind;
+
+        return infoMessages.canFind!(msg => msg.canFind(needle));
+    }
+
+    bool hasWarningMessage(string needle)
+    {
+        import std.algorithm : canFind;
+
+        return warningMessages.canFind!(msg => msg.canFind(needle));
+    }
+
+    void clear()
+    {
+        infoMessages.length = 0;
+        warningMessages.length = 0;
+        errorMessages.length = 0;
+    }
+
+    size_t totalMessages()
+    {
+        return infoMessages.length + warningMessages.length + errorMessages.length;
+    }
+}
+
+unittest
+{
+    import std.file;
+    import std.path;
+    import core.thread;
+    import core.time;
+
+    auto testLogger = new TestLogger();
+    auto testDbPath = buildPath(tempDir(), "test_callback.db");
+    scope (exit)
+    {
+        if (exists(testDbPath))
+        {
+            remove(testDbPath);
+        }
+    }
+    auto db = Database(testDbPath, testLogger);
+    Thread.sleep(10.msecs);
+    db.execute("CREATE TABLE test_logging (id INTEGER, value TEXT)");
+    auto stmt = db.prepare("INSERT INTO test_logging VALUES (?, ?)");
+    stmt.bind(1, 1);
+    stmt.bind(2, "test value");
+    stmt.execute();
+    writefln("Total messages logged: %d", testLogger.totalMessages());
+    writefln("Info messages: %s", testLogger.infoMessages);
+    writefln("Warning messages: %s", testLogger.warningMessages);
 }

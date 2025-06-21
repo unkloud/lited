@@ -48,6 +48,7 @@ clean:
 	@dub clean
 	@rm -f $(SQLITE_OBJ) $(SQLITE_LIB) $(SQLITE_WRAPPER) $(LITED) $(SQLITE_CLI)
 	@rm -rf $(SQLITE_DIR) *.sqlite
+	@rm -rf $(SQLITE_DIR) *.log
 
 clean-all: clean
 	@echo "Cleaning all generated files..."

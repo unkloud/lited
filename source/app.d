@@ -1,7 +1,8 @@
 import hnclient;
 import sqlite_wrapper;
-import std.stdio;
 import std.getopt;
+import std.logger;
+import std.stdio;
 import vibe.data.json;
 
 void create_tables(ref Database db, bool drop_first = false)
@@ -39,7 +40,8 @@ void main(string[] args)
     {
         defaultGetoptPrinter("Some information about the program.", helpInformation.options);
     }
-    auto db = Database(database);
+    auto logger = new FileLogger("sqlite.log");
+    auto db = Database(database, logger);
     db.create_tables(true);
     auto itemId = latestItemId();
     auto item = getItem(itemId);
