@@ -52,6 +52,7 @@ struct Database
     this(string dbPath, Logger logger)
     {
         enforce(logger !is null);
+        this.logger = logger;
         open(dbPath);
         apply_best_practises();
     }
@@ -238,7 +239,6 @@ struct ResultSet
     {
         auto ret = sqlite3_step(stmt.stmt);
         hasData = (ret == SQLITE_ROW);
-
         if (!hasData && ret != SQLITE_DONE)
         {
             auto error = format("Query failed: %s", to!string(sqlite3_errmsg(stmt.db)));

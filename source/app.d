@@ -32,18 +32,68 @@ void upsert_item(ref Database db, in ref HNItem item)
     }
 }
 
+bool itemRecored(ref Database db, ulong itemId)
+{
+    auto stmt = db.prepare("select * from hackernews_items where id=?");
+    stmt.bind(1, itemId);
+    auto rs = stmt.query();
+    return !rs.empty;
+}
+
+ulong minRecordedId(ref Database db)
+{
+    auto sql = "select min(id) from hackernews_items";
+    auto stmt = db.prepare(sql);
+    auto rs = stmt.query();
+    while (!rs.empty)
+    {
+        return rs.getInt(0);
+    }
+    return -1;
+}
+
+enum CrawlStartPoint
+{
+    LatestOnline,
+    LatestRecorded
+}
+
+void crawlBack(ref Database db, ulong startPoint, ulong count)
+{
+    for (ulong i = startPoint; startPoint - i < count; i--)
+    {
+        if (!db.itemRecored(i))
+        {
+            auto item = getItem(i);
+            db.upsert_item(item);
+        }
+    }
+}
+
 void main(string[] args)
 {
     string database = "hackernews.sqlite";
-    auto helpInformation = getopt(args, "database", &database);
+    string logPath = "app.log";
+    bool recreateDB = false;
+    CrawlStartPoint startPoint = CrawlStartPoint.LatestRecorded;
+    int stopCount = -1;
+    auto helpInformation = getopt(args,
+        "database", &database,
+        "logPath", &logPath,
+        "recreateDB", &recreateDB,
+        "startPoint", &startPoint,
+        "stopCount", &stopCount);
     if (helpInformation.helpWanted)
     {
-        defaultGetoptPrinter("Some information about the program.", helpInformation.options);
+        defaultGetoptPrinter("Hacker News Crawler", helpInformation.options);
+        return;
     }
-    auto logger = new FileLogger("sqlite.log");
+    auto logger = new FileLogger(logPath);
     auto db = Database(database, logger);
-    db.create_tables(true);
-    auto itemId = latestItemId();
-    auto item = getItem(itemId);
-    db.upsert_item(item);
+    db.create_tables(recreateDB);
+    assert(startPoint == CrawlStartPoint.LatestOnline || startPoint == CrawlStartPoint
+            .LatestRecorded);
+    long startId = startPoint == CrawlStartPoint.LatestOnline ? latestItemId() : db.minRecordedId();
+    ulong count = stopCount == -1 ? startId : stopCount;
+    db.crawlBack(startId, count);
 }
