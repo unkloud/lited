@@ -1,5 +1,6 @@
 import hnclient;
 import sqlite_wrapper;
+import std.conv;
 import std.getopt;
 import std.logger;
 import std.stdio;
@@ -52,6 +53,18 @@ ulong minRecordedId(ref Database db)
     return -1;
 }
 
+int itemCount(ref Database db)
+{
+    auto sql = "SELECT COUNT(*) FROM hackernews_items";
+    auto stmt = db.prepare(sql);
+    auto rs = stmt.query();
+    if (!rs.empty)
+    {
+        return cast(int) rs.getInt(0);
+    }
+    return 0;
+}
+
 enum CrawlStartPoint
 {
     LatestOnline,
@@ -60,7 +73,7 @@ enum CrawlStartPoint
 
 void crawlBack(ref Database db, ulong startPoint, ulong count)
 {
-    for (ulong i = startPoint; startPoint - i < count; i--)
+    for (ulong i = startPoint; startPoint - i <= count; i--)
     {
         if (!db.itemRecored(i))
         {
@@ -95,5 +108,9 @@ void main(string[] args)
             .LatestRecorded);
     long startId = startPoint == CrawlStartPoint.LatestOnline ? latestItemId() : db.minRecordedId();
     ulong count = stopCount == -1 ? startId : stopCount;
+    auto rowCountBefore = db.itemCount();
     db.crawlBack(startId, count);
+    auto rowCountAfter = db.itemCount();
+    logger.info("Row before:" ~ to!string(
+            rowCountBefore) ~ " after: " ~ to!string(rowCountAfter));
 }
