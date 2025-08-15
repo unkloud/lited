@@ -9,7 +9,7 @@
 	},
 	"description": "A SQLite app in Dlang",
 	"dflags": [
-		"-Llibs/sqlite/sqlite3.a"
+		"-Llibs/sqlite/libsqlite3.a"
 	],
 	"importPaths": [
 		"libs/sqlite",
@@ -18,7 +18,8 @@
 	"license": "AGPL-3.0-or-later",
 	"name": "lited",
 	"preBuildCommands": [
-		"liteup.sh 3.5.1 libs/sqlite",
-		"make"
+		"liteup.sh 3.5.4 libs/sqlite",
+		"litebuild.sh libs/sqlite static libs/sqlite",
+		"echo '#include \"sqlite3.h\"' > libs/sqlite/lited.c"
 	]
 }
